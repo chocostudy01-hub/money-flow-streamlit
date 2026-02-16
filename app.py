@@ -271,19 +271,24 @@ def page_dashboard(df: pd.DataFrame, period_mode: str, period_value: str | None)
             go.Pie(
                 labels=cat_sum.index,
                 values=cat_sum.values,
-                hole=0.45,
-                marker=dict(colors=pie_colors),
-                textinfo="label+percent",
-                textposition="outside",
-                hovertemplate="%{label}: ¥%{value:,.0f} (%{percent})<extra></extra>",
+                hole=0.4,
+                marker=dict(colors=pie_colors, line=dict(color="#fff", width=2)),
+                textinfo="percent",
+                textposition="inside",
+                textfont=dict(size=13, color="#fff"),
+                hovertemplate="<b>%{label}</b><br>¥%{value:,.0f}<br>%{percent}<extra></extra>",
+                pull=[0.03] * len(cat_sum),
             )
         )
         fig_pie.update_layout(
             title="カテゴリ別支出",
-            margin=dict(t=50, b=50, l=50, r=50),
-            height=500,
+            margin=dict(t=50, b=30, l=20, r=20),
+            height=420,
             showlegend=True,
-            legend=dict(orientation="h", yanchor="top", y=-0.05, xanchor="center", x=0.5),
+            legend=dict(
+                orientation="h", yanchor="top", y=-0.02, xanchor="center", x=0.5,
+                font=dict(size=13),
+            ),
         )
         st.plotly_chart(fig_pie, use_container_width=True)
 
@@ -372,29 +377,45 @@ def page_sankey(df: pd.DataFrame, period_mode: str, period_value: str | None):
     else:
         height = max(400, len(labels) * 30 + 80)
 
+    # ラベルに金額を付与して一目で分かるようにする
+    label_values = [0] * len(labels)
+    for s, t, v in zip(sources, targets, values):
+        label_values[t] += v
+        # 収入源ノードは source 側の合計
+        if labels[s].startswith("【収入】"):
+            label_values[s] += v
+    # 収入合計ノード
+    for i, lab in enumerate(labels):
+        if lab == "収入合計":
+            label_values[i] = sum(v for s, v in zip(sources, values) if labels[s].startswith("【収入】"))
+
+    display_labels = [
+        f"{lab}  ¥{label_values[i]:,.0f}" for i, lab in enumerate(labels)
+    ]
+
     fig = go.Figure(
         go.Sankey(
             node=dict(
-                pad=15,
-                thickness=24,
-                label=labels,
+                pad=18,
+                thickness=28,
+                label=display_labels,
                 color=node_colors,
-                hovertemplate="%{label}<br>¥%{value:,.0f}<extra></extra>",
+                hovertemplate="%{label}<extra></extra>",
             ),
             link=dict(
                 source=sources,
                 target=targets,
                 value=values,
                 color=link_colors,
-                hovertemplate="%{source.label} → %{target.label}<br>¥%{value:,.0f}<extra></extra>",
+                hovertemplate="%{source.label}<br>→ %{target.label}<extra></extra>",
             ),
         )
     )
     fig.update_layout(
-        title=dict(text="お金の流れ", font=dict(size=18)),
-        font=dict(size=14, family="Meiryo, Yu Gothic, sans-serif"),
+        title=dict(text="お金の流れ", font=dict(size=20)),
+        font=dict(size=15, color="#222", family="'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif"),
         height=height,
-        margin=dict(t=50, b=30, l=30, r=30),
+        margin=dict(t=60, b=30, l=10, r=10),
     )
     st.plotly_chart(fig, use_container_width=True)
 
